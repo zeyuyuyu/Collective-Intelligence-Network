@@ -1,41 +1,39 @@
-import threading
-import time
-import logging
+import pandas as pd
+import numpy as np
 
-logger = logging.getLogger(__name__)
+def aggregate_and_analyze(data_dir):
+    """Aggregate and analyze data from multiple sources."""
+    # Load data from various sources
+    df1 = pd.read_csv(f'{data_dir}/source1.csv')
+    df2 = pd.read_excel(f'{data_dir}/source2.xlsx')
+    df3 = pd.read_json(f'{data_dir}/source3.json')
 
-class TaskScheduler:
-    def __init__(self):
-        self.tasks = []
-        self.task_lock = threading.Lock()
+    # Concatenate dataframes
+    df = pd.concat([df1, df2, df3], ignore_index=True)
 
-    def add_task(self, task, interval):
-        with self.task_lock:
-            self.tasks.append((task, interval))
+    # Perform data cleaning and preprocessing
+    df = df.dropna()
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values(by='date')
 
-    def run(self):
-        while True:
-            for task, interval in self.tasks:
-                try:
-                    task()
-                except Exception as e:
-                    logger.error(f'Error executing task: {e}')
-                time.sleep(interval)
+    # Calculate aggregated metrics
+    df['total_value'] = df['value1'] + df['value2'] + df['value3']
+    df['average_value'] = df['total_value'] / 3
+    df['std_dev'] = df['total_value'].std()
 
-def main():
-    scheduler = TaskScheduler()
+    # Perform advanced analysis
+    trends = df.groupby('category')['total_value'].mean().sort_values(ascending=False)
+    anomalies = df[df['total_value'] > df['average_value'] + 2 * df['std_dev']]
 
-    def my_task():
-        print('Executing task...')
-
-    scheduler.add_task(my_task, 60)  # Execute 'my_task' every 60 seconds
-
-    scheduler_thread = threading.Thread(target=scheduler.run, daemon=True)
-    scheduler_thread.start()
-
-    print('Press Ctrl+C to stop the program.')
-    while True:
-        time.sleep(1)
+    return {
+        'trends': trends,
+        'anomalies': anomalies
+    }
 
 if __name__ == '__main__':
-    main()
+    results = aggregate_and_analyze('data/')
+    print('Top Trends:')
+    print(results['trends'])
+    print('\
+Anomalies:')
+    print(results['anomalies'])
